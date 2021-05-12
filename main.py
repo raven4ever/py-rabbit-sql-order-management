@@ -10,7 +10,7 @@ from configuration import DatabaseConfig, RabbitConfig, FolderConfig
 from db_entities import Base, Product
 
 
-def read_configuration(filename: str):
+def get_configuration(filename: str):
     configuration = configparser.RawConfigParser()
     configuration.read(filename)
 
@@ -21,7 +21,7 @@ def read_configuration(filename: str):
     return db, rabbit, folder
 
 
-def create_db(config):
+def get_db_objects(config):
     eng = create_engine(
         f'mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.schema}',
         echo=True)
@@ -40,17 +40,9 @@ def get_xml_files(xml_path: str):
     return files
 
 
-if __name__ == '__main__':
-    db_config, rabbit_config, folder_config = read_configuration('application.properties')
-
-    engine, session = create_db(db_config)
-
-    # create the DB structure from entities
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-
+def insert_initial_data(sess):
     # insert few products
-    session.add_all([
+    sess.add_all([
         Product(name='prod1', quantity=15),
         Product(name='prod2', quantity=3),
         Product(name='prod3', quantity=33),
@@ -58,18 +50,33 @@ if __name__ == '__main__':
         Product(name='prod5', quantity=63)
     ])
 
-    xml_files = get_xml_files(folder_config.src_folder)
 
-    for file in xml_files:
+def process_xml_files(files, sess):
+    for file in files:
         with open(file) as fd:
             doc = xmltodict.parse(fd.read())
         for product in doc['Stock']['Product']:
-            session.query(Product) \
+            sess.query(Product) \
                 .filter(Product.id == product['id']) \
                 .update({Product.quantity: product['quantity']})
 
         # move to processes files
         shutil.move(file, file.replace(folder_config.src_folder, folder_config.dst_folder))
 
-    all_prods = session.query(Product).all()
-    print(all_prods)
+
+if __name__ == '__main__':
+    db_config, rabbit_config, folder_config = get_configuration('application.properties')
+
+    engine, session = get_db_objects(db_config)
+
+    # create the DB structure from entities
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+
+    insert_initial_data(session)
+
+    xml_files = get_xml_files(folder_config.src_folder)
+
+    process_xml_files(xml_files, session)
+
+    print(session.query(Product).all())
