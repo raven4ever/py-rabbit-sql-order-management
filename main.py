@@ -1,10 +1,13 @@
 import configparser
+import os
+import shutil
 
+import xmltodict as xmltodict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from configuration import DatabaseConfig, RabbitConfig, FolderConfig
 from db_entities import Base, Product
-from utils import DatabaseConfig, RabbitConfig
 
 
 def read_configuration(filename: str):
@@ -19,7 +22,10 @@ def read_configuration(filename: str):
 
     rabbit = RabbitConfig(configuration.get(section='rabbitmq', option='host', raw=True))
 
-    return db, rabbit
+    folder = FolderConfig(configuration.get(section='folder', option='src_folder', raw=True),
+                          configuration.get(section='folder', option='dst_folder', raw=True))
+
+    return db, rabbit, folder
 
 
 def create_db(db_config):
@@ -32,8 +38,17 @@ def create_db(db_config):
     return eng, sess
 
 
+def get_xml_files(xml_path: str):
+    files = []
+    for file in os.listdir(f'.{os.path.sep}{xml_path}'):
+        if file.endswith('.xml'):
+            files.append(os.path.join(f'.{os.path.sep}{xml_path}', file))
+
+    return files
+
+
 if __name__ == '__main__':
-    db_config, rabbit_config = read_configuration('application.properties')
+    db_config, rabbit_config, folder_config = read_configuration('application.properties')
 
     engine, session = create_db(db_config)
 
@@ -50,8 +65,18 @@ if __name__ == '__main__':
         Product(name='prod5', quantity=63)
     ])
 
+    xml_files = get_xml_files(folder_config.src_folder)
+
+    for file in xml_files:
+        with open(file) as fd:
+            doc = xmltodict.parse(fd.read())
+        for product in doc['Stock']['Product']:
+            session.query(Product) \
+                .filter(Product.id == product['id']) \
+                .update({Product.quantity: product['quantity']})
+
+        # move to processes files
+        shutil.move(file, file.replace(folder_config.src_folder, folder_config.dst_folder))
+
     all_prods = session.query(Product).all()
     print(all_prods)
-
-    # Update from XML files
-    # find all XML files in initial_xmls

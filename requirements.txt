@@ -1,3 +1,4 @@
 pika
 sqlalchemy
 pymysql
+xmltodict
