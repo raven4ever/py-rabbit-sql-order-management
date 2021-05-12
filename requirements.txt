@@ -1,4 +1,5 @@
 pika
+pika-stubs
 sqlalchemy
 pymysql
 xmltodict

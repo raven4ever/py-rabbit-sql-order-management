@@ -21,14 +21,18 @@ class DatabaseConfig:
 
 
 class RabbitConfig:
-    def __init__(self, host):
+    def __init__(self, host, orders_q, response_q):
         self.host = host
+        self.orders_q = orders_q
+        self.response_q = response_q
 
     @classmethod
     def from_config_file(cls, config: RawConfigParser, section: str):
         host = config.get(section=section, option='host', raw=True)
+        orders_q = config.get(section=section, option='send_orders_q', raw=True)
+        response_q = config.get(section=section, option='send_results_q', raw=True)
 
-        return cls(host)
+        return cls(host, orders_q, response_q)
 
 
 class FolderConfig:
