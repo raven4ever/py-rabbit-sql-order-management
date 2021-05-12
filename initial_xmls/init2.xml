@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<Stock>
+    <Product>
+        <id>3</id>
+        <quantity>123</quantity>
+    </Product>
+    <Product>
+        <id>4</id>
+        <quantity>147</quantity>
+    </Product>
+</Stock>
