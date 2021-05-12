@@ -14,23 +14,16 @@ def read_configuration(filename: str):
     configuration = configparser.RawConfigParser()
     configuration.read(filename)
 
-    db = DatabaseConfig(configuration.get(section='database', option='host', raw=True),
-                        configuration.get(section='database', option='port', raw=True),
-                        configuration.get(section='database', option='schema', raw=True),
-                        configuration.get(section='database', option='user', raw=True),
-                        configuration.get(section='database', option='password', raw=True))
-
-    rabbit = RabbitConfig(configuration.get(section='rabbitmq', option='host', raw=True))
-
-    folder = FolderConfig(configuration.get(section='folder', option='src_folder', raw=True),
-                          configuration.get(section='folder', option='dst_folder', raw=True))
+    db = DatabaseConfig.from_config_file(configuration, 'database')
+    rabbit = RabbitConfig.from_config_file(configuration, 'rabbitmq')
+    folder = FolderConfig.from_config_file(configuration, 'folder')
 
     return db, rabbit, folder
 
 
-def create_db(db_config):
+def create_db(config):
     eng = create_engine(
-        f'mysql+pymysql://{db_config.user}:{db_config.password}@{db_config.host}:{db_config.port}/{db_config.schema}',
+        f'mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.schema}',
         echo=True)
     Session = sessionmaker(bind=eng)
     sess = Session(autocommit=True)
